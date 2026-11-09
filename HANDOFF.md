@@ -11,7 +11,7 @@ You own this app now. Change anything you want; the only things that need Jonath
 ### What you need (one time)
 1. **A GitHub account.** Accept the invite from GitHub to the **littlecountrycars** organization (it went to dylan@littlecountrycars.com). If you don't have an account, the invite walks you through making a free one. Members have edit access to every app in the organization.
 2. **Claude.** You're already in the Little Country Cars Claude workspace. The littlecountrycars GitHub organization is connected to the workspace for all repositories, so your Claude sessions can open and publish these apps. You don't need to connect anything else.
-3. **Chrome on your Android phone, version 137 or newer.** Play Store → Chrome → Update.
+3. **Chrome on your Android phone, version 138 or newer.** Play Store → Chrome → Update.
 
 ### Start your own Claude session
 1. On a laptop (easiest) or in the Claude app, open **Code** and start a **new session**.
@@ -28,19 +28,23 @@ Claude will read this file, so it starts out knowing everything below.
 
 The app talks to the blue Veepeak over **classic Bluetooth** using a Chrome feature called Web Serial. These are the usual causes, most likely first.
 
+**First, open the Connection log** (under the connect buttons). It shows every step and every message to and from the scanner. If connecting fails, screenshot it or tap **Copy log** and send it to Claude.
+
+**Normal, not a problem:** in Android Bluetooth settings the Veepeak shows as *paired* but not *connected*, or connects and drops after a few seconds. That's how classic-Bluetooth scanners work: the link only opens while an app is using it.
+
 1. **Another app is holding the Veepeak.** Classic Bluetooth adapters only allow one connection at a time. If Car Scanner, Torque, OBD Fusion or any other scan app has connected to it since it was plugged in, the Check-In app can't get in. Fix: force-stop the other apps (Android Settings → Apps → [app] → Force stop), unplug the Veepeak for 5 seconds, plug it back in, then connect from Check-In.
 2. **Not paired in Android.** With the Veepeak in a truck and the key ON: Android Settings → Connected devices / Bluetooth → Pair new device → **OBDII** (PIN **1234**). It has to show as paired before the app can see it. If the app says *"No scanner picked. If the Veepeak isn't in the list, pair it in Android Bluetooth settings first,"* this is the problem.
-3. **Chrome too old, or not Chrome.** It must be the real Chrome app (not Samsung Internet, not a browser inside another app). If the app says *"This Chrome can't reach classic Bluetooth scanners yet,"* update Chrome. Chrome → ⋮ → Settings → About Chrome shows the version; it needs 137 or newer.
+3. **Chrome too old, or not Chrome.** It must be the real Chrome app (not Samsung Internet, not a browser inside another app). If the app says *"This Chrome can't reach classic Bluetooth scanners yet,"* update Chrome. Chrome → ⋮ → Settings → About Chrome shows the version; it needs 138 or newer.
 4. **Chrome isn't allowed to use Bluetooth.** Android Settings → Apps → Chrome → Permissions → **Nearby devices** → Allow. Also make sure Bluetooth is on.
 5. **Picked the wrong device.** Tap **Pick a different scanner** and choose **OBDII**. The app remembers the last one you picked; this clears that.
 6. **Connected, but "the truck didn't answer."** That message means the phone reached the Veepeak but the Veepeak couldn't reach the truck. Key must be ON (or engine running). Wait 5 seconds and tap Scan again. Check the Veepeak's light is on.
 7. **"The scanner stopped answering."** Unplug the Veepeak 5 seconds, plug back in, Disconnect/Connect in the app, scan again.
-8. **Still stuck:** in your Claude session, ask Claude to *"add a connection log to the app that shows every step of connecting and every message to and from the scanner, so I can screenshot it."* Then send Claude the screenshot. That turns a guessing game into a 5-minute fix.
+8. **Still stuck:** send Claude a screenshot of the Connection log (or paste it after tapping Copy log), plus what you tapped.
 
 Note: the app was tested end to end on the built-in **demo truck** and the code that decodes real scanner replies was tested against sample replies, but it had **not yet been run against a real truck** when this was written. Expect a first round of fixes; that's normal.
 
 ### Why Web Serial and not a Play Store app
-The Veepeak you have is the classic-Bluetooth (Android-only) model. Chrome on Android added the ability for a web page to talk to classic Bluetooth serial devices in version 137. That let us build a web app instead of a Play Store app: no developer account, no sideloading, and every change reaches your phone automatically. The trade-off: it only works in Chrome on Android (not iPhone), and it's a newer Chrome feature, so phone-specific quirks are possible. Bluetooth LE scanners (the kind that work with iPhones) are also supported through the **Bluetooth LE scanner** link, as a backup.
+The Veepeak you have is the classic-Bluetooth (Android-only) model. Chrome on Android added the ability for a web page to talk to classic Bluetooth serial devices in version 138. That let us build a web app instead of a Play Store app: no developer account, no sideloading, and every change reaches your phone automatically. The trade-off: it only works in Chrome on Android (not iPhone), and it's a newer Chrome feature, so phone-specific quirks are possible. Bluetooth LE scanners (the kind that work with iPhones) are also supported through the **Bluetooth LE scanner** link, as a backup.
 
 ---
 
@@ -89,7 +93,7 @@ The app **never clears codes.**
 
 | Decision | Why |
 |---|---|
-| Keep the Veepeak; build our own app instead of using Car Scanner/Torque | Those apps can't write to monday or follow our process. Chrome 137+ can talk to the Veepeak directly. |
+| Keep the Veepeak; build our own app instead of using Car Scanner/Torque | Those apps can't write to monday or follow our process. Chrome 138+ can talk to the Veepeak directly. |
 | Web app installed from Chrome, not a Play Store app | No developer account or sideloading; updates reach your phone automatically. |
 | Hosted on GitHub Pages, not as a Claude artifact | Claude artifacts can't use Bluetooth. |
 | Stock # = last 6 of VIN | Matches how Inventory Recon is already keyed (e.g. A80955, B94060). |
@@ -144,7 +148,7 @@ The app **never clears codes.**
 ## 7. Known limits
 
 - Never yet run on a real truck when this was written (see section 2).
-- Classic-Bluetooth scanning works only in Chrome on Android, 137+. No iPhone with this Veepeak.
+- Classic-Bluetooth scanning works only in Chrome on Android, 138+. No iPhone with this Veepeak.
 - Module codes (airbag/ABS/etc.) only for Ford, only on CAN trucks (roughly 2008+). Some Fords may not answer through the Veepeak.
 - Per-cylinder misfire counters only on CAN trucks that share them; otherwise the idle RPM check is the guide.
 - Typical costs are national ballpark ranges, not our real costs.
@@ -152,7 +156,6 @@ The app **never clears codes.**
 
 ## 8. Ideas not built yet (your call)
 
-- Connection log screen (do this first if the scanner is fighting you).
 - Our real parts and labor costs in the estimate defaults.
 - Fill more walk-around/hoist items automatically.
 - Module codes for Chevy/GM, Ram, Toyota.

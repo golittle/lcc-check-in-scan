@@ -105,11 +105,28 @@
     return m.join(' ');
   }
 
+  /* Connection log: every step and every scanner message, so a failed connect can be screenshotted */
+  const clog = [];
+  function connLog(msg) {
+    const d = new Date();
+    const ts = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    clog.push(ts + '  ' + msg); if (clog.length > 400) clog.shift();
+    const el = $('connLog'); if (el) { el.textContent = clog.join('\n'); el.scrollTop = el.scrollHeight; }
+  }
+  function explain(e) {
+    const n = (e && e.name) || '', m = (e && e.message) || '';
+    if (m === 'NO_ADAPTER') return 'The phone opened a Bluetooth link but the Veepeak didn\u2019t reply. Force-stop Car Scanner (or any other scan app), unplug the Veepeak for 5 seconds, plug it back in, and connect again.';
+    if (n === 'NetworkError' || /failed to open|connection|rfcomm|socket/i.test(m)) return 'Couldn\u2019t open a link to the Veepeak. Most often another app (Car Scanner, Torque) is still holding it: force-stop that app, unplug the Veepeak for 5 seconds, plug it back in, and try again. Also check the key is ON and the Veepeak light is on.';
+    if (n === 'SecurityError') return 'Chrome isn\u2019t allowed to use Bluetooth. Android Settings \u2192 Apps \u2192 Chrome \u2192 Permissions \u2192 Nearby devices \u2192 Allow.';
+    return m || 'Couldn\u2019t connect.';
+  }
+
   async function connect(kind) {
     err($('connectErr'), '');
+    let t;
     try {
       if (transport) await disconnect();
-      let t;
+      connLog('--- Connect (' + kind + ') \u00b7 ' + navigator.userAgent.replace(/^.*?\(/, '(').slice(0, 140));
       if (kind === 'demo') { t = new OBD.DemoTransport(); OBD.DEMO_TRUCK.demoRunning = false; }
       else if (kind === 'ble') {
         if (!OBD.BleTransport.supported()) throw new Error('Bluetooth LE isn\u2019t available in this browser.');
@@ -120,27 +137,35 @@
             ? 'This Chrome can\u2019t reach classic Bluetooth scanners yet. Update Chrome (138 or newer), or use a Bluetooth LE scanner.'
             : supportMsg());
         }
+        if (kind !== 'choose') connLog('Previously picked scanners: ' + (await navigator.serial.getPorts()).length);
         t = kind === 'choose' ? await OBD.SerialTransport.choose() : await OBD.SerialTransport.pick();
+        t.log = connLog;
+        connLog('Scanner chosen: ' + t.info());
       }
       $('connectMsg').textContent = 'Connecting\u2026';
-      try { await t.open(); }
-      catch (e) {
-        if (kind === 'serial' && /already open/i.test(e.message || '')) { /* reuse */ }
-        else if (kind === 'serial') { t = await OBD.SerialTransport.choose(); await t.open(); }
-        else throw e;
+      await t.open();
+      const e2 = new OBD.Elm(t); e2.onLog = connLog;
+      if (kind !== 'demo') {
+        $('connectMsg').textContent = 'Linked. Checking the Veepeak answers\u2026';
+        const id = await e2.hello();
+        connLog('Adapter answered: ' + id);
       }
-      transport = t; elm = new OBD.Elm(t);
-      if (t.port) t.port.addEventListener('disconnect', () => { lost(); });
-      if (t.device) t.device.addEventListener('gattserverdisconnected', () => { lost(); });
+      transport = t; elm = e2;
+      if (t.port) t.port.addEventListener('disconnect', () => { connLog('Android reported the scanner disconnected'); lost(); });
+      if (t.device) t.device.addEventListener('gattserverdisconnected', () => { connLog('Bluetooth LE scanner disconnected'); lost(); });
       store.set(LS.port, kind);
+      connLog('Connected');
       $('connectMsg').textContent = kind === 'demo'
         ? 'Demo truck connected. Scans here are practice and won\u2019t post to monday.com.'
         : 'Scanner connected. Enter the dash mileage and tap Scan truck.';
       setPill();
     } catch (e) {
+      connLog('Failed: ' + ((e && e.name) || 'Error') + ': ' + ((e && e.message) || e));
+      if (t && t.close && !transport) { try { await t.close(); } catch (x) {} }
       if (e && e.name === 'NotFoundError') { $('connectMsg').textContent = 'No scanner picked. If the Veepeak isn\u2019t in the list, pair it in Android Bluetooth settings first.'; return; }
-      $('connectMsg').textContent = 'Plug the scanner in, turn the key to ON (or start the truck), then connect.';
-      err($('connectErr'), (e && e.message) || 'Couldn\u2019t connect.');
+      $('connectMsg').textContent = 'Plug the scanner in, turn the key to ON (or start the truck), then connect. If it keeps failing, tap Pick a different scanner and choose OBDII.';
+      err($('connectErr'), explain(e));
+      $('logBox').open = true;
     }
   }
   async function disconnect() {
@@ -736,6 +761,12 @@
   $('otherBtn').onclick = () => connect('choose');
   $('bleBtn').onclick = () => connect('ble');
   $('demoBtn').onclick = () => connect('demo');
+  $('logCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(clog.join('\n')); $('logCopy').textContent = 'Copied'; }
+    catch (e) { $('logCopy').textContent = 'Select the text to copy'; }
+    setTimeout(() => { $('logCopy').textContent = 'Copy log'; }, 2000);
+  };
+  $('logClear').onclick = () => { clog.length = 0; $('connLog').textContent = ''; };
   $('disconnectBtn').onclick = disconnect;
   $('scanBtn').onclick = scan;
   $('idleBtn').onclick = runIdle;

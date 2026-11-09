@@ -23,25 +23,47 @@
   /* ---------- Transports: each has open(), write(str), onData(cb), close(), name ---------- */
 
   class SerialTransport {
-    constructor(port) { this.port = port; this.name = 'Bluetooth'; this._cb = () => {}; }
+    constructor(port) { this.port = port; this.name = 'Bluetooth'; this._cb = () => {}; this.log = () => {}; }
     static supported() { return !!(root.navigator && navigator.serial); }
     static async pick() {
       // Previously granted port: reconnect without the picker
       const known = await navigator.serial.getPorts();
-      if (known.length) return new SerialTransport(known[0]);
-      const port = await navigator.serial.requestPort({ allowedBluetoothServiceClassIds: [SPP_UUID] });
-      return new SerialTransport(port);
+      if (known.length) return new SerialTransport(known[known.length - 1]);
+      return SerialTransport.choose();
     }
     static async choose() {
       const port = await navigator.serial.requestPort({ allowedBluetoothServiceClassIds: [SPP_UUID] });
       return new SerialTransport(port);
     }
+    info() {
+      try {
+        const i = this.port.getInfo() || {};
+        return Object.keys(i).length ? Object.entries(i).map(([k, v]) => k + '=' + v).join(', ') : 'no details';
+      } catch (e) { return 'no details'; }
+    }
     onData(cb) { this._cb = cb; }
-    async open() {
-      await this.port.open({ baudRate: 38400 });
-      this.writer = this.port.writable.getWriter();
-      this.reader = this.port.readable.getReader();
-      this._loop();
+    // Bluetooth links on Android often fail the first try (radio busy, adapter waking up). Try a few times.
+    async open(tries = 3) {
+      let last;
+      for (let i = 1; i <= tries; i++) {
+        try {
+          this.log('Opening Bluetooth link, try ' + i + ' of ' + tries);
+          await this.port.open({ baudRate: 38400 });
+          this.writer = this.port.writable.getWriter();
+          this.reader = this.port.readable.getReader();
+          this._loop();
+          this.log('Bluetooth link open');
+          return;
+        } catch (e) {
+          last = e;
+          this.log('Try ' + i + ' failed: ' + (e.name || 'Error') + ': ' + (e.message || e));
+          if (/already open/i.test(e.message || '')) {
+            try { await this.close(); } catch (x) {}
+          }
+          if (i < tries) await sleep(1500);
+        }
+      }
+      throw last;
     }
     async _loop() {
       try {
@@ -50,7 +72,7 @@
           if (done) break;
           if (value) this._cb(dec.decode(value));
         }
-      } catch (e) { /* port closed */ }
+      } catch (e) { this.log('Link read stopped: ' + (e.message || e)); }
     }
     async write(s) { await this.writer.write(enc.encode(s)); }
     async close() {
@@ -201,7 +223,7 @@
   class Elm {
     constructor(transport) {
       this.t = transport; this.buf = ''; this.pending = null; this.queue = Promise.resolve();
-      this.protocol = null; this.isCan = true; this.log = [];
+      this.protocol = null; this.isCan = true; this.log = []; this.onLog = () => {};
       transport.onData((s) => this._onData(s));
     }
     _onData(s) {
@@ -216,17 +238,33 @@
       const run = async () => {
         this.buf = '';
         const raw = await new Promise((resolve, reject) => {
-          const timer = setTimeout(() => { this.pending = null; reject(new Error('timeout: ' + cmd)); }, timeout);
+          const timer = setTimeout(() => {
+            this.pending = null;
+            this.onLog('\u2192 ' + cmd + '   \u2190 no reply in ' + (timeout / 1000) + 's' + (this.buf ? ' (partial: ' + this.buf.replace(/[\r\n]+/g, ' | ').trim() + ')' : ''));
+            reject(new Error('timeout: ' + cmd));
+          }, timeout);
           this.pending = { resolve: (v) => { clearTimeout(timer); resolve(v); } };
           this.t.write(cmd + '\r').catch((e) => { clearTimeout(timer); this.pending = null; reject(e); });
         });
         const lines = cleanLines(raw, cmd);
         this.log.push({ cmd, raw: lines.join(' | ') });
+        this.onLog('\u2192 ' + cmd + '   \u2190 ' + (raw.replace(/[\r\n]+/g, ' | ').trim() || '(empty)'));
         return lines;
       };
       const p = this.queue.then(run, run);
       this.queue = p.catch(() => {});
       return p;
+    }
+    // Is the adapter itself talking? Works with the key off. Returns its ID text, or throws NO_ADAPTER.
+    async hello() {
+      for (const c of ['ATZ', 'ATI']) {
+        try {
+          const r = await this.send(c, c === 'ATZ' ? 3000 : 2000);
+          const t = r.join(' ');
+          if (/ELM|OBD|V\d|>/i.test(t) || t.length) return t || 'answered';
+        } catch (e) {}
+      }
+      throw new Error('NO_ADAPTER');
     }
     async init(progress = () => {}) {
       progress('Waking up the adapter');

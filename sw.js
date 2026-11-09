@@ -1,5 +1,5 @@
 /* Offline support: the app opens without signal on the lot. Network first so updates arrive; cache as fallback. */
-const CACHE = 'lcc-scan-v3';
+const CACHE = 'lcc-scan-v4';
 const SHELL = ['./', 'index.html', 'obd.js', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-app.svg'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
