@@ -170,11 +170,12 @@ ul.est li button { width: 40px; height: 40px; border-radius: 8px; border: 1px so
   <section id="vehicleCard" class="card">
     <h2><span class="step">2</span>Scan the truck</h2>
     <div class="grid2">
-      <label class="f">Mileage on dash<input id="miles" type="number" inputmode="numeric" placeholder="e.g. 98420"></label>
-      <label class="f">Stock #<input id="stock" type="text" autocapitalize="characters" placeholder="From VIN"></label>
+      <label class="f">Miles<input id="miles" type="number" inputmode="numeric" placeholder="Fills in from scan"></label>
+      <label class="f">Stock #<input id="stock" type="text" autocapitalize="characters" placeholder="Fills in from scan"></label>
     </div>
+    <p id="autoNote" class="muted small hidden" style="margin:8px 0 0"></p>
     <label class="check" style="margin:10px 0 4px"><input id="doModules" type="checkbox" checked><span>Also read airbag, ABS, transmission and body modules (Ford, adds about 20 seconds)</span></label>
-    <p class="muted small" style="margin:4px 0 12px">Key on, engine off is the best start: the next step tests the battery while you start it.</p>
+    <p class="muted small" style="margin:4px 0 12px">Leave Miles and Stock # blank; the scan reads the VIN and, on most trucks, the mileage. Key on, engine off is the best start: the next step tests the battery while you start it.</p>
     <button id="scanBtn" class="btn dark block" disabled>Scan truck</button>
     <div id="scanProgress" class="progress hidden" style="margin-top:12px" aria-live="polite">
       <div class="bar"><i id="scanBar"></i></div>

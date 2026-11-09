@@ -202,7 +202,7 @@
 
   async function scan() {
     if (!elm || busy) return;
-    busy = true; setPill(); err($('scanErr'), '');
+    busy = true; setPill(); err($('scanErr'), ''); show($('autoNote'), false);
     show($('scanProgress')); show($('resultCard'), false); show($('idleCard'), false); show($('sendCard'), false); show($('driveCard'), false);
     show($('idleResult'), false); show($('idleLive'), false);
     $('sendMsg').classList.add('hidden');
@@ -213,14 +213,23 @@
       if ((r.stored || []).length || (r.status && r.status.mil)) { progress('Reading freeze frame'); r.freeze = await OBD.freezeFrame(elm); }
       if ($('doModules').checked) r.modules = await OBD.moduleScan(elm, makeOf({ vin: r.vin }), progress);
       $('scanBar').style.width = '100%'; $('scanStep').textContent = 'Done.';
-      const miles = +$('miles').value || null;
-      const a = buildAssessment(r, miles);
+      // Dash miles typed in win; otherwise use what the truck's computer reports
+      const typed = +$('miles').value || null;
+      const miles = typed || (r.odometerMi ? Math.round(r.odometerMi) : null);
+      const a = buildAssessment(r, typed);
       current = {
         id: Date.now().toString(36), at: r.at, demo: transport.name === 'Demo', tech: settings.name || '',
         vin: r.vin, stock: ($('stock').value.trim().toUpperCase()) || OBD.stockFromVin(r.vin) || '', miles,
         scan: r, assessment: a, idle: null, idleAssessment: null, decoded: null, sent: null
       };
       if (!$('stock').value.trim() && current.stock) $('stock').value = current.stock;
+      if (!typed && miles) $('miles').value = miles;
+      current.milesSource = typed ? 'dash' : (miles ? 'truck' : null);
+      $('autoNote').textContent = [
+        r.vin ? 'VIN ' + r.vin + ' read from the truck.' : 'Couldn\u2019t read the VIN from this truck. Type the Stock # (last 6 of the VIN).',
+        typed ? '' : (miles ? 'Miles read from the truck\u2019s computer. Glance at the dash; if it\u2019s different, type the dash number.' : 'This truck doesn\u2019t report mileage. Type it from the dash.')
+      ].join(' ');
+      show($('autoNote'));
       renderScan();
       saveHist();
       decodeVin(current);
@@ -573,7 +582,7 @@
     const info = [];
     if (rec.vin) info.push('VIN ' + esc(rec.vin));
     if (rec.decoded) info.push(esc(rec.decoded.label));
-    if (rec.miles) info.push('Dash ' + (+rec.miles).toLocaleString() + ' mi');
+    if (rec.miles) info.push((rec.milesSource === 'truck' ? 'Truck computer ' : 'Dash ') + (+rec.miles).toLocaleString() + ' mi');
     if (info.length) L.push(info.join(' \u00b7 '));
     const tag = { problem: 'PROBLEM', watch: 'WATCH', good: 'OK', info: 'NOTE' };
     const bt = bigTicket(rec);
@@ -780,6 +789,7 @@
     const q = $('searchQ').value.trim(); if (!q) return;
     try { listResults(await searchByName(q)); } catch (e) { listResults([]); }
   };
+  $('miles').addEventListener('change', () => { if (current) { current.miles = +$('miles').value || null; current.milesSource = 'dash'; } });
   $('stock').addEventListener('change', () => { if (current) { current.stock = $('stock').value.trim().toUpperCase(); $('stock').value = current.stock; lookupMatch(); } });
   $('settingsBtn').onclick = openSettings;
   $('settings').addEventListener('close', saveSettings);

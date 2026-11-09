@@ -151,6 +151,7 @@ The app **never clears codes.**
 - Classic-Bluetooth scanning works only in Chrome on Android, 138+. No iPhone with this Veepeak.
 - Module codes (airbag/ABS/etc.) only for Ford, only on CAN trucks (roughly 2008+). Some Fords may not answer through the Veepeak.
 - Per-cylinder misfire counters only on CAN trucks that share them; otherwise the idle RPM check is the guide.
+- Mileage comes from the truck when it can: the standard odometer reading (mostly 2019+), or on Fords the engine computer (22 DD01, read in km and converted). Not every truck reports it; then type it from the dash. Typed dash miles always win. Unverified on a real truck as of Nov 9; compare against the dash on the first few.
 - Typical costs are national ballpark ranges, not our real costs.
 - Only the Check engine light and Battery walk-around subitems are filled automatically.
 

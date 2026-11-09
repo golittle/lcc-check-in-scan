@@ -156,7 +156,8 @@
     '0902': '014\r0: 49 02 01 31 46 54\r1: 45 57 31 45 50 34 4A\r2: 46 44 30 30 30 34 32',
     '03': '43 02 03 03 01 71',
     '07': '47 01 04 20',
-    '0A': '4A 00'
+    '0A': '4A 00',
+    '7E0:22DD01': '62 DD 01 02 0B 4E'
   };
   // Demo idle: engine running, rough on cylinder 3, running lean
   (function () {
@@ -451,8 +452,48 @@
     r.milMinutes = await read(0x4d, (d) => (d[0] << 8) + d[1]);
     r.minutesSinceClear = await read(0x4e, (d) => (d[0] << 8) + d[1]);
     r.odometerMi = await read(0xa6, (d) => kmToMi(((d[0] << 24) >>> 0) + (d[1] << 16) + (d[2] << 8) + d[3]) / 10);
+    r.odometerSource = r.odometerMi ? 'standard' : null;
     r.engineRunning = r.rpm != null ? r.rpm > 400 : null;
+    if (!r.vinValid || !r.odometerMi) await engineComputerIds(elm, r, progress);
     return r;
+  }
+
+  // Ford-family VINs (Ford, Lincoln, Mercury trucks/SUVs/cars built in US, Canada, Mexico)
+  function isFordVin(vin) { return /^(?:[1-3]F|[1-5]L|NM0|MAJ)/.test(vin || ''); }
+
+  // Backup reads straight from the engine computer (7E0) on CAN trucks:
+  //  - VIN via UDS 22 F190 when the standard VIN read failed
+  //  - Ford: odometer via 22 DD01 (km, 3 bytes) when the standard odometer (PID A6) isn't supported
+  async function engineComputerIds(elm, r, progress) {
+    if (elm.protocol && !/^[6-9]$/.test(elm.protocol)) return;
+    const wantVin = !r.vinValid, wantOdo = !r.odometerMi;
+    if (!wantVin && !(wantOdo && isFordVin(r.vin))) return;
+    progress(wantVin ? 'Reading the VIN from the engine computer' : 'Reading mileage from the engine computer');
+    try {
+      for (const c of ['ATSH7E0', 'ATCRA7E8', 'ATFCSH7E0', 'ATFCSD300000', 'ATFCSM1']) { try { await elm.send(c, 2000); } catch (e) {} }
+      if (wantVin) {
+        try {
+          const msgs = parseMessages(await elm.send('22F190', 4000), true);
+          const m = msgs.find((b) => b[0] === 0x62 && b[1] === 0xf1 && b[2] === 0x90);
+          if (m) {
+            const v = m.slice(3).map((b) => String.fromCharCode(b)).filter((c) => VIN_CHARS.test(c)).join('');
+            if (v.length >= 17 && vinCheckOk(v.slice(-17))) { r.vin = v.slice(-17); r.vinValid = true; r.vinSource = 'engine computer'; }
+          }
+        } catch (e) { r.errors.push('22F190: ' + e.message); }
+      }
+      if (!r.odometerMi && isFordVin(r.vin)) {
+        try {
+          const msgs = parseMessages(await elm.send('22DD01', 4000), true);
+          const m = msgs.find((b) => b[0] === 0x62 && b[1] === 0xdd && b[2] === 0x01);
+          if (m && m.length >= 6) {
+            const mi = kmToMi((m[3] << 16) + (m[4] << 8) + m[5]);
+            if (mi > 0 && mi < 1000000) { r.odometerMi = mi; r.odometerSource = 'Ford engine computer'; }
+          }
+        } catch (e) { r.errors.push('22DD01: ' + e.message); }
+      }
+    } finally {
+      for (const c of ['ATAR', 'ATFCSM0', 'ATSH7DF']) { try { await elm.send(c, 2000); } catch (e) {} }
+    }
   }
 
 
@@ -980,7 +1021,7 @@
     }
     if (r.coolantF != null && r.engineRunning && r.coolantF > 230) add('problem', 'Running hot: ' + r.coolantF + '°F coolant', '');
     if (r.odometerMi && enteredMiles && Math.abs(r.odometerMi - enteredMiles) > 1000) {
-      add('watch', 'Mileage mismatch', 'Engine computer reports ' + Math.round(r.odometerMi).toLocaleString() + ' mi, dash entered as ' + (+enteredMiles).toLocaleString() + ' mi.');
+      add('watch', 'Mileage mismatch', 'Truck computer reports ' + Math.round(r.odometerMi).toLocaleString() + ' mi, dash entered as ' + (+enteredMiles).toLocaleString() + ' mi.');
     }
     if (!r.vin) add('watch', 'VIN not readable from the computer', 'Normal on some older trucks. Type it in from the door jamb.');
     else if (!r.vinValid) add('watch', 'VIN check digit doesn’t match', 'Compare the computer VIN to the door jamb and title.');
