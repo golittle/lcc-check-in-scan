@@ -111,7 +111,7 @@ The app **never clears codes.**
 | Dash/VIN photos — not added | Jonathan passed on it. |
 | Moved code from Jonathan's personal GitHub (golittle) to the **littlecountrycars** organization | So you, Simon and Claude sessions across the workspace can all get to it, and future apps go in the same place. This changed the app's address. |
 | Brand kit applied | Every LCC tool uses it: Country Orange #FF8C00, black, white, #666666; status green/red only for state; Fjalla One headings, Arial body; rounded corners; Nebraska orange icon. |
-| App icon is an SVG, not PNG | The tool used to publish could only send text files; Chrome on Android supports SVG app icons. |
+| App icons are PNG (192, 512, maskable) plus the SVG | Chrome on Android won't install an app from an SVG-only icon; that's why Add to Home screen failed at first (fixed Nov 9). |
 
 ---
 
@@ -132,7 +132,7 @@ The app **never clears codes.**
 - `app.js` — the screens, estimate builder, and everything that talks to monday.com.
 - `index.html` — layout and styling.
 - `sw.js` — lets the app open with no signal on the lot. Its `CACHE` name must change whenever files change so phones get the update.
-- `manifest.webmanifest`, `icon.svg`, `icon-app.svg` — home-screen install and icons.
+- `manifest.webmanifest`, `icon.svg`, `icon-app.svg`, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` — home-screen install and icons.
 
 ---
 
