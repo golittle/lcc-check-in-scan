@@ -3,7 +3,7 @@
 Owner: Dylan (recon). Sign-off on process changes: Jonathan.
 
 ## What this is
-A web app installed on Dylan's Android phone (Chrome 138+). It talks to a Veepeak Bluetooth OBD2 adapter (ELM327) and posts results to monday.com. Live at https://golittle.github.io/lcc-check-in-scan/ via GitHub Pages from `main` (root). Pushing to `main` publishes; phones pick up the new version next open.
+A web app installed on Dylan's Android phone (Chrome 138+). It talks to a Veepeak Bluetooth OBD2 adapter (ELM327) and posts results to monday.com. Live at https://littlecountrycars.github.io/lcc-check-in-scan/ (repo: littlecountrycars/lcc-check-in-scan; moved from golittle on Nov 9, 2026) via GitHub Pages from `main` (root). Pushing to `main` publishes; phones pick up the new version next open.
 
 ## Files
 - `obd.js` — scanner engine: transports (Web Serial classic BT, Web Bluetooth LE, demo truck), ELM327 commands, code parsing, idle/misfire, cranking test, freeze frame, Ford module codes (UDS 0x19), test-drive analysis, fix/parts/cost table (`FIXES`), parts links (`SHOPS`).
