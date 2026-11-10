@@ -1,3 +1,5 @@
+> **Moved (Nov 10, 2026):** this app is now the Check-In mode of **Vehicle Scan**, repo littlecountrycars/lcc-vehicle-scan, live at https://littlecountrycars.github.io/lcc-vehicle-scan/. This repository is archived; its page only redirects. Make all changes in lcc-vehicle-scan.
+
 # LCC Check-In Scan — notes for Claude
 
 Owner: Dylan (recon). Sign-off on process changes: Jonathan.
